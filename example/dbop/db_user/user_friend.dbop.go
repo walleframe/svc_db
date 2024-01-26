@@ -73,16 +73,12 @@ var (
 )
 
 func init() {
+	svc_db.RegisterSyncDBTable("mysql", "db_user", "user_friend", SyncUserFriendDBTable)
 	svc_db.RegisterDB("mysql", "db_user", "user_friend", func(db *sqlx.DB) error {
-		// sync table columns
-		err := svc_db.SyncTableColumns(context.Background(), db, "user_friend", UserFriendSQL_Create, UserFriendSQL_TableColumns)
+		//
+		err := SyncUserFriendDBTable(context.Background(), db)
 		if err != nil {
-			return fmt.Errorf("swap db_user.user_friend pointer, sync columns failed, %w", err)
-		}
-		// sync table index
-		err = svc_db.SyncTableIndex(context.Background(), db, "user_friend", UserFriendSQL_TableIndex)
-		if err != nil {
-			return fmt.Errorf("swap db_user.user_friend pointer, sync index failed, %w", err)
+			return fmt.Errorf("swap db_user.user_friend pointer, %w", err)
 		}
 		//
 		tableOP, err := NewUserFriendOperation(db)
@@ -103,6 +99,20 @@ func UserFriendNamedSQL(bufSize int) *UserFriendSQLWriter {
 	sql := &UserFriendSQLWriter{}
 	sql.buf.Grow(bufSize)
 	return sql
+}
+
+func SyncUserFriendDBTable(ctx context.Context, db *sqlx.DB) (err error) {
+	// sync table columns
+	err = svc_db.SyncTableColumns(context.Background(), db, "user_friend", UserFriendSQL_Create, UserFriendSQL_TableColumns)
+	if err != nil {
+		return fmt.Errorf("sync db_user.user_friend table, sync columns failed, %w", err)
+	}
+	// sync table index
+	err = svc_db.SyncTableIndex(context.Background(), db, "user_friend", UserFriendSQL_TableIndex)
+	if err != nil {
+		return fmt.Errorf("sync db_user.user_friend table, sync index failed, %w", err)
+	}
+	return
 }
 
 func UserFriendToPrimaryKeys(rows []*dbop.UserFriend) (ids []UserFriendKey) {
@@ -132,17 +142,17 @@ func UserFriendExToPrimaryKeysEx(rows []*dbop.UserFriendEx) (ids []UserFriendKey
 
 const (
 	UserFriendSQL_Insert        = "insert user_friend(`uid`,`fid`,`state`) values(?,?,?)"
-	UserFriendSQL_InsertValues  = ",values(?,?,?)"
-	UserFriendSQL_InsertValues2 = ",values(?,?,?)"
+	UserFriendSQL_InsertValues  = ",(?,?,?)"
+	UserFriendSQL_InsertValues2 = ",(?,?,?)"
 	UserFriendSQL_Where1        = " where (`uid`=?,`fid`=?)"
 	UserFriendSQL_Where2        = " or (`uid`=?,`fid`=?)"
 	UserFriendSQL_Upsert        = "insert user_friend(`uid`,`fid`,`state`) values(?,?,?)"
 	UserFriendSQL_UpsertUpdate  = " on duplicate key update `uid`=values(`uid`),`fid`=values(`fid`),`state`=values(`state`)"
 	UserFriendSQL_Update        = "update user_friend set `state`=? where `uid`=?,`fid`=?"
 	UserFriendSQL_Delete        = "delete from user_friend"
-	UserFriendSQL_Find          = "select user_friend(`uid`,`fid`,`state`) from user_friend"
-	UserFriendSQL_FindRow       = "select user_friend(`uid`,`fid`,`state`,`modify_stamp`,`create_stamp`) from user_friend"
-	UserFriendSQL_Count         = "select count(id) from user_friend"
+	UserFriendSQL_Find          = "select `uid`,`fid`,`state` from user_friend"
+	UserFriendSQL_FindRow       = "select `uid`,`fid`,`state`,`modify_stamp`,`create_stamp` from user_friend"
+	UserFriendSQL_Count         = "select count(*) from user_friend"
 	UserFriendSQL_Create        = "create table user_friend (" +
 		"`uid` bigint not null default 0," +
 		"`fid` bigint not null default 0," +
@@ -417,8 +427,8 @@ func (t *xUserFriendOperation) FindExByKeyArray(ctx context.Context, ids []UserF
 		return []*dbop.UserFriendEx{data}, nil
 	}
 	buf := util.Builder{}
-	buf.Grow(len(UserFriendSQL_Find) + len(UserFriendSQL_Where1) + (len(ids)-1)*len(UserFriendSQL_Where2))
-	buf.Write([]byte(UserFriendSQL_Find))
+	buf.Grow(len(UserFriendSQL_FindRow) + len(UserFriendSQL_Where1) + (len(ids)-1)*len(UserFriendSQL_Where2))
+	buf.Write([]byte(UserFriendSQL_FindRow))
 	buf.Write([]byte(UserFriendSQL_Where1))
 	for i := 0; i < len(ids)-1; i++ {
 		buf.Write([]byte(UserFriendSQL_Where2))
@@ -472,12 +482,12 @@ func (t *xUserFriendOperation) DeleteByKeyArray(ctx context.Context, ids []UserF
 
 func (t *xUserFriendOperation) FindByIndexUid(ctx context.Context, uid int64, limit, offset int) (datas []*dbop.UserFriend, err error) {
 	if t.idxUidFind == nil {
-		t.idxUidFind, err = t.db.PrepareContext(ctx, UserFriendSQL_Find+"where `uid`=? limit ?,?")
+		t.idxUidFind, err = t.db.PrepareContext(ctx, UserFriendSQL_Find+" where `uid`=? limit ?,?")
 		if err != nil {
 			return nil, fmt.Errorf("prepare db_user.user_friend find_by_index_uid failed,%w", err)
 		}
 	}
-	rows, err := t.idxUidFind.QueryContext(ctx, uid, limit, offset)
+	rows, err := t.idxUidFind.QueryContext(ctx, uid, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_friend find_by_index_uid failed,%w", err)
 	}
@@ -494,12 +504,12 @@ func (t *xUserFriendOperation) FindByIndexUid(ctx context.Context, uid int64, li
 }
 func (t *xUserFriendOperation) FindExByIndexUid(ctx context.Context, uid int64, limit, offset int) (datas []*dbop.UserFriendEx, err error) {
 	if t.idxUidFindEx == nil {
-		t.idxUidFindEx, err = t.db.PrepareContext(ctx, UserFriendSQL_FindRow+"where `uid`=? limit ?,?")
+		t.idxUidFindEx, err = t.db.PrepareContext(ctx, UserFriendSQL_FindRow+" where `uid`=? limit ?,?")
 		if err != nil {
 			return nil, fmt.Errorf("prepare db_user.user_friend findex_by_index_uid failed,%w", err)
 		}
 	}
-	rows, err := t.idxUidFindEx.QueryContext(ctx, uid, limit, offset)
+	rows, err := t.idxUidFindEx.QueryContext(ctx, uid, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_friend findex_by_index_uid failed,%w", err)
 	}
@@ -516,7 +526,7 @@ func (t *xUserFriendOperation) FindExByIndexUid(ctx context.Context, uid int64, 
 }
 func (t *xUserFriendOperation) CountByIndexUid(ctx context.Context, uid int64) (count int, err error) {
 	if t.idxUidCount == nil {
-		t.idxUidCount, err = t.db.PrepareContext(ctx, UserFriendSQL_Count+"where `uid`=?")
+		t.idxUidCount, err = t.db.PrepareContext(ctx, UserFriendSQL_Count+" where `uid`=?")
 		if err != nil {
 			return 0, fmt.Errorf("prepare db_user.user_friend count_by_index_uid failed,%w", err)
 		}
@@ -530,7 +540,7 @@ func (t *xUserFriendOperation) CountByIndexUid(ctx context.Context, uid int64) (
 
 func (t *xUserFriendOperation) DeleteByIndexUid(ctx context.Context, uid int64) (res sql.Result, err error) {
 	if t.idxUidDelete == nil {
-		t.idxUidDelete, err = t.db.PrepareContext(ctx, UserFriendSQL_Count+"where `uid`=?")
+		t.idxUidDelete, err = t.db.PrepareContext(ctx, UserFriendSQL_Delete+" where `uid`=?")
 		if err != nil {
 			return nil, fmt.Errorf("prepare db_user.user_friend delete_by_index_uid failed,%w", err)
 		}
@@ -545,12 +555,16 @@ func (t *xUserFriendOperation) DeleteByIndexUid(ctx context.Context, uid int64) 
 func (t *xUserFriendOperation) Where(bufSize int) *UserFriendWhereStmt {
 	w := &UserFriendWhereStmt{}
 	w.buf.Grow(bufSize)
+	w.buf.Write([]byte(" where "))
 	return w
 }
 
 func (t *xUserFriendOperation) Select(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriend, err error) {
 	where.applyLimitAndOffset()
-	var findSql = UserFriendSQL_Find + where.String()
+	var findSql = UserFriendSQL_Find
+	if where != nil {
+		findSql += where.String()
+	}
 	rows, err := t.db.QueryContext(ctx, findSql)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_friend select failed,%w", err)
@@ -569,7 +583,10 @@ func (t *xUserFriendOperation) Select(ctx context.Context, where *UserFriendWher
 }
 func (t *xUserFriendOperation) SelectEx(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriendEx, err error) {
 	where.applyLimitAndOffset()
-	var findSql = UserFriendSQL_FindRow + where.String()
+	var findSql = UserFriendSQL_FindRow
+	if where != nil {
+		findSql += where.String()
+	}
 	rows, err := t.db.QueryContext(ctx, findSql)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_friend selectex failed,%w", err)
@@ -587,7 +604,10 @@ func (t *xUserFriendOperation) SelectEx(ctx context.Context, where *UserFriendWh
 }
 
 func (t *xUserFriendOperation) DeleteMany(ctx context.Context, where *UserFriendWhereStmt) (res sql.Result, err error) {
-	w := where.String()
+	var w string
+	if where != nil {
+		w = where.String()
+	}
 	buf := util.Builder{}
 	buf.Grow(len(UserFriendSQL_Delete) + len(w))
 	buf.Write([]byte(UserFriendSQL_Delete))
@@ -601,8 +621,12 @@ func (t *xUserFriendOperation) DeleteMany(ctx context.Context, where *UserFriend
 }
 
 func (t *xUserFriendOperation) RangeAll(ctx context.Context, where *UserFriendWhereStmt, f func(ctx context.Context, row *dbop.UserFriend) bool) error {
-	var findSql = UserFriendSQL_Find + where.String()
-	limit := where.limit
+	var findSql = UserFriendSQL_Find
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -612,9 +636,9 @@ func (t *xUserFriendOperation) RangeAll(ctx context.Context, where *UserFriendWh
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return fmt.Errorf("exec db_user.user_friend range_all failed, offset:%d limit:%d %w", offset, limit, err)
@@ -640,8 +664,12 @@ func (t *xUserFriendOperation) RangeAll(ctx context.Context, where *UserFriendWh
 }
 
 func (t *xUserFriendOperation) RangeAllEx(ctx context.Context, where *UserFriendWhereStmt, f func(ctx context.Context, row *dbop.UserFriendEx) bool) error {
-	var findSql = UserFriendSQL_FindRow + where.String()
-	limit := where.limit
+	var findSql = UserFriendSQL_FindRow
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -651,9 +679,9 @@ func (t *xUserFriendOperation) RangeAllEx(ctx context.Context, where *UserFriend
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return fmt.Errorf("exec db_user.user_friend range_all failed, offset:%d limit:%d %w", offset, limit, err)
@@ -679,8 +707,12 @@ func (t *xUserFriendOperation) RangeAllEx(ctx context.Context, where *UserFriend
 }
 
 func (t *xUserFriendOperation) AllData(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriend, err error) {
-	var findSql = UserFriendSQL_Find + where.String()
-	limit := where.limit
+	var findSql = UserFriendSQL_Find
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -690,9 +722,9 @@ func (t *xUserFriendOperation) AllData(ctx context.Context, where *UserFriendWhe
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return nil, fmt.Errorf("exec db_user.user_friend all_data failed, offset:%d limit:%d %w", offset, limit, err)
@@ -715,8 +747,12 @@ func (t *xUserFriendOperation) AllData(ctx context.Context, where *UserFriendWhe
 }
 
 func (t *xUserFriendOperation) AllDataEx(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriendEx, err error) {
-	var findSql = UserFriendSQL_FindRow + where.String()
-	limit := where.limit
+	var findSql = UserFriendSQL_FindRow
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -726,9 +762,9 @@ func (t *xUserFriendOperation) AllDataEx(ctx context.Context, where *UserFriendW
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return nil, fmt.Errorf("exec db_user.user_friend all_data_ex failed, offset:%d limit:%d %w", offset, limit, err)
@@ -807,9 +843,9 @@ func (w *UserFriendWhereStmt) applyLimitAndOffset() {
 		return
 	}
 	w.buf.Write([]byte(" limit "))
-	w.buf.WriteInt(w.limit)
-	w.buf.WriteByte(',')
 	w.buf.WriteInt(w.offset)
+	w.buf.WriteByte(',')
+	w.buf.WriteInt(w.limit)
 }
 
 func (w *UserFriendWhereStmt) String() string {
@@ -1071,9 +1107,9 @@ func (x *UserFriendNamedWhere) State() *UserFriendNamedWhere {
 
 func (x *UserFriendNamedWhere) Limit(limit, offset int) *UserFriendNamedWhere {
 	x.buf.Write([]byte(" limit "))
-	x.buf.WriteInt(limit)
-	x.buf.WriteByte(',')
 	x.buf.WriteInt(offset)
+	x.buf.WriteByte(',')
+	x.buf.WriteInt(limit)
 	return x
 }
 
@@ -1177,9 +1213,9 @@ func (x *UserFriendNamedOrderBy) State() *UserFriendNamedOrderAsc {
 
 func (x *UserFriendNamedOrderBy) Limit(limit, offset int) *UserFriendNamedOrderBy {
 	x.buf.Write([]byte(" limit "))
-	x.buf.WriteInt(limit)
-	x.buf.WriteByte(',')
 	x.buf.WriteInt(offset)
+	x.buf.WriteByte(',')
+	x.buf.WriteInt(limit)
 	return x
 }
 

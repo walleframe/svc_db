@@ -17,7 +17,7 @@ func NewStringCondition[T any](w *T, buf *util.Builder, name string) *StringCond
 	return &StringCondition[T]{
 		w:    w,
 		buf:  buf,
-		name: "id",
+		name: name,
 	}
 }
 
@@ -95,7 +95,7 @@ func NewIntSignedCondition[T any, V int | int8 | int16 | int32 | int64](w *T, bu
 	return &IntSignedCondition[T, V]{
 		w:    w,
 		buf:  buf,
-		name: "id",
+		name: name,
 	}
 }
 
@@ -224,7 +224,7 @@ func NewIntUnSignedCondition[T any, V uint | uint8 | uint16 | uint32 | uint64](w
 	return &IntUnSignedCondition[T, V]{
 		w:    w,
 		buf:  buf,
-		name: "id",
+		name: name,
 	}
 }
 

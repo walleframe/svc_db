@@ -105,7 +105,7 @@ func SyncTableColumns(ctx context.Context, db *sqlx.DB, tableName string, create
 
 // scanTableIndex only scan index name is exists.
 func scanTableIndex(ctx context.Context, db *sqlx.DB, tableName, indexName string) (exists bool, err error) {
-	s := fmt.Sprintf("show columns from `%s` where Key_name = '?'", tableName)
+	s := fmt.Sprintf("show index from `%s` where `Key_name` = ?", tableName)
 	rows, err := db.QueryContext(ctx, s, indexName)
 	if err != nil {
 		return false, fmt.Errorf("%s failed, %w", s, err)

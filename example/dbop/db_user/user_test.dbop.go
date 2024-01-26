@@ -52,16 +52,12 @@ var (
 )
 
 func init() {
+	svc_db.RegisterSyncDBTable("mysql", "db_user", "user_test", SyncUserTestDBTable)
 	svc_db.RegisterDB("mysql", "db_user", "user_test", func(db *sqlx.DB) error {
-		// sync table columns
-		err := svc_db.SyncTableColumns(context.Background(), db, "user_test", UserTestSQL_Create, UserTestSQL_TableColumns)
+		//
+		err := SyncUserTestDBTable(context.Background(), db)
 		if err != nil {
-			return fmt.Errorf("swap db_user.user_test pointer, sync columns failed, %w", err)
-		}
-		// sync table index
-		err = svc_db.SyncTableIndex(context.Background(), db, "user_test", UserTestSQL_TableIndex)
-		if err != nil {
-			return fmt.Errorf("swap db_user.user_test pointer, sync index failed, %w", err)
+			return fmt.Errorf("swap db_user.user_test pointer, %w", err)
 		}
 		//
 		tableOP, err := NewUserTestOperation(db)
@@ -84,17 +80,31 @@ func UserTestNamedSQL(bufSize int) *UserTestSQLWriter {
 	return sql
 }
 
+func SyncUserTestDBTable(ctx context.Context, db *sqlx.DB) (err error) {
+	// sync table columns
+	err = svc_db.SyncTableColumns(context.Background(), db, "user_test", UserTestSQL_Create, UserTestSQL_TableColumns)
+	if err != nil {
+		return fmt.Errorf("sync db_user.user_test table, sync columns failed, %w", err)
+	}
+	// sync table index
+	err = svc_db.SyncTableIndex(context.Background(), db, "user_test", UserTestSQL_TableIndex)
+	if err != nil {
+		return fmt.Errorf("sync db_user.user_test table, sync index failed, %w", err)
+	}
+	return
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // sql statement
 
 const (
 	UserTestSQL_Insert        = "insert user_test(`uid`,`xxx`,`state`) values(?,?,?)"
-	UserTestSQL_InsertValues  = ",values(?,?,?)"
-	UserTestSQL_InsertValues2 = ",values(?,?,?)"
+	UserTestSQL_InsertValues  = ",(?,?,?)"
+	UserTestSQL_InsertValues2 = ",(?,?,?)"
 	UserTestSQL_Delete        = "delete from user_test"
-	UserTestSQL_Find          = "select user_test(`uid`,`xxx`,`state`) from user_test"
-	UserTestSQL_FindRow       = "select user_test(`uid`,`xxx`,`state`,`modify_stamp`,`create_stamp`) from user_test"
-	UserTestSQL_Count         = "select count(id) from user_test"
+	UserTestSQL_Find          = "select `uid`,`xxx`,`state` from user_test"
+	UserTestSQL_FindRow       = "select `uid`,`xxx`,`state`,`modify_stamp`,`create_stamp` from user_test"
+	UserTestSQL_Count         = "select count(*) from user_test"
 	UserTestSQL_Create        = "create table user_test (" +
 		"`uid` bigint not null default 0," +
 		"`xxx` bigint not null default 0," +
@@ -177,12 +187,12 @@ func (t *xUserTestOperation) InsertMany(ctx context.Context, datas []*dbop.UserT
 
 func (t *xUserTestOperation) FindByIndexUid(ctx context.Context, uid int64, limit, offset int) (datas []*dbop.UserTest, err error) {
 	if t.idxUidFind == nil {
-		t.idxUidFind, err = t.db.PrepareContext(ctx, UserFriendSQL_Find+"where `uid`=? limit ?,?")
+		t.idxUidFind, err = t.db.PrepareContext(ctx, UserTestSQL_Find+" where `uid`=? limit ?,?")
 		if err != nil {
 			return nil, fmt.Errorf("prepare db_user.user_test find_by_index_uid failed,%w", err)
 		}
 	}
-	rows, err := t.idxUidFind.QueryContext(ctx, uid, limit, offset)
+	rows, err := t.idxUidFind.QueryContext(ctx, uid, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_test find_by_index_uid failed,%w", err)
 	}
@@ -199,12 +209,12 @@ func (t *xUserTestOperation) FindByIndexUid(ctx context.Context, uid int64, limi
 }
 func (t *xUserTestOperation) FindExByIndexUid(ctx context.Context, uid int64, limit, offset int) (datas []*dbop.UserTestEx, err error) {
 	if t.idxUidFindEx == nil {
-		t.idxUidFindEx, err = t.db.PrepareContext(ctx, UserFriendSQL_FindRow+"where `uid`=? limit ?,?")
+		t.idxUidFindEx, err = t.db.PrepareContext(ctx, UserTestSQL_FindRow+" where `uid`=? limit ?,?")
 		if err != nil {
 			return nil, fmt.Errorf("prepare db_user.user_test findex_by_index_uid failed,%w", err)
 		}
 	}
-	rows, err := t.idxUidFindEx.QueryContext(ctx, uid, limit, offset)
+	rows, err := t.idxUidFindEx.QueryContext(ctx, uid, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_test findex_by_index_uid failed,%w", err)
 	}
@@ -221,7 +231,7 @@ func (t *xUserTestOperation) FindExByIndexUid(ctx context.Context, uid int64, li
 }
 func (t *xUserTestOperation) CountByIndexUid(ctx context.Context, uid int64) (count int, err error) {
 	if t.idxUidCount == nil {
-		t.idxUidCount, err = t.db.PrepareContext(ctx, UserFriendSQL_Count+"where `uid`=?")
+		t.idxUidCount, err = t.db.PrepareContext(ctx, UserTestSQL_Count+" where `uid`=?")
 		if err != nil {
 			return 0, fmt.Errorf("prepare db_user.user_test count_by_index_uid failed,%w", err)
 		}
@@ -235,7 +245,7 @@ func (t *xUserTestOperation) CountByIndexUid(ctx context.Context, uid int64) (co
 
 func (t *xUserTestOperation) DeleteByIndexUid(ctx context.Context, uid int64) (res sql.Result, err error) {
 	if t.idxUidDelete == nil {
-		t.idxUidDelete, err = t.db.PrepareContext(ctx, UserFriendSQL_Count+"where `uid`=?")
+		t.idxUidDelete, err = t.db.PrepareContext(ctx, UserTestSQL_Delete+" where `uid`=?")
 		if err != nil {
 			return nil, fmt.Errorf("prepare db_user.user_test delete_by_index_uid failed,%w", err)
 		}
@@ -250,12 +260,16 @@ func (t *xUserTestOperation) DeleteByIndexUid(ctx context.Context, uid int64) (r
 func (t *xUserTestOperation) Where(bufSize int) *UserTestWhereStmt {
 	w := &UserTestWhereStmt{}
 	w.buf.Grow(bufSize)
+	w.buf.Write([]byte(" where "))
 	return w
 }
 
 func (t *xUserTestOperation) Select(ctx context.Context, where *UserTestWhereStmt) (datas []*dbop.UserTest, err error) {
 	where.applyLimitAndOffset()
-	var findSql = UserTestSQL_Find + where.String()
+	var findSql = UserTestSQL_Find
+	if where != nil {
+		findSql += where.String()
+	}
 	rows, err := t.db.QueryContext(ctx, findSql)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_test select failed,%w", err)
@@ -274,7 +288,10 @@ func (t *xUserTestOperation) Select(ctx context.Context, where *UserTestWhereStm
 }
 func (t *xUserTestOperation) SelectEx(ctx context.Context, where *UserTestWhereStmt) (datas []*dbop.UserTestEx, err error) {
 	where.applyLimitAndOffset()
-	var findSql = UserTestSQL_FindRow + where.String()
+	var findSql = UserTestSQL_FindRow
+	if where != nil {
+		findSql += where.String()
+	}
 	rows, err := t.db.QueryContext(ctx, findSql)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_test selectex failed,%w", err)
@@ -292,7 +309,10 @@ func (t *xUserTestOperation) SelectEx(ctx context.Context, where *UserTestWhereS
 }
 
 func (t *xUserTestOperation) DeleteMany(ctx context.Context, where *UserTestWhereStmt) (res sql.Result, err error) {
-	w := where.String()
+	var w string
+	if where != nil {
+		w = where.String()
+	}
 	buf := util.Builder{}
 	buf.Grow(len(UserTestSQL_Delete) + len(w))
 	buf.Write([]byte(UserTestSQL_Delete))
@@ -306,8 +326,12 @@ func (t *xUserTestOperation) DeleteMany(ctx context.Context, where *UserTestWher
 }
 
 func (t *xUserTestOperation) RangeAll(ctx context.Context, where *UserTestWhereStmt, f func(ctx context.Context, row *dbop.UserTest) bool) error {
-	var findSql = UserTestSQL_Find + where.String()
-	limit := where.limit
+	var findSql = UserTestSQL_Find
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -317,9 +341,9 @@ func (t *xUserTestOperation) RangeAll(ctx context.Context, where *UserTestWhereS
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return fmt.Errorf("exec db_user.user_test range_all failed, offset:%d limit:%d %w", offset, limit, err)
@@ -345,8 +369,12 @@ func (t *xUserTestOperation) RangeAll(ctx context.Context, where *UserTestWhereS
 }
 
 func (t *xUserTestOperation) RangeAllEx(ctx context.Context, where *UserTestWhereStmt, f func(ctx context.Context, row *dbop.UserTestEx) bool) error {
-	var findSql = UserTestSQL_FindRow + where.String()
-	limit := where.limit
+	var findSql = UserTestSQL_FindRow
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -356,9 +384,9 @@ func (t *xUserTestOperation) RangeAllEx(ctx context.Context, where *UserTestWher
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return fmt.Errorf("exec db_user.user_test range_all failed, offset:%d limit:%d %w", offset, limit, err)
@@ -384,8 +412,12 @@ func (t *xUserTestOperation) RangeAllEx(ctx context.Context, where *UserTestWher
 }
 
 func (t *xUserTestOperation) AllData(ctx context.Context, where *UserTestWhereStmt) (datas []*dbop.UserTest, err error) {
-	var findSql = UserTestSQL_Find + where.String()
-	limit := where.limit
+	var findSql = UserTestSQL_Find
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -395,9 +427,9 @@ func (t *xUserTestOperation) AllData(ctx context.Context, where *UserTestWhereSt
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return nil, fmt.Errorf("exec db_user.user_test all_data failed, offset:%d limit:%d %w", offset, limit, err)
@@ -420,8 +452,12 @@ func (t *xUserTestOperation) AllData(ctx context.Context, where *UserTestWhereSt
 }
 
 func (t *xUserTestOperation) AllDataEx(ctx context.Context, where *UserTestWhereStmt) (datas []*dbop.UserTestEx, err error) {
-	var findSql = UserTestSQL_FindRow + where.String()
-	limit := where.limit
+	var findSql = UserTestSQL_FindRow
+	limit := 0
+	if where != nil {
+		findSql += where.String()
+		limit = where.limit
+	}
 	if limit == 0 {
 		limit = 512
 	}
@@ -431,9 +467,9 @@ func (t *xUserTestOperation) AllDataEx(ctx context.Context, where *UserTestWhere
 		buf := util.Builder{}
 		buf.Grow(32)
 		buf.Write([]byte(" limit "))
-		buf.WriteInt(limit)
-		buf.WriteByte(',')
 		buf.WriteInt(offset)
+		buf.WriteByte(',')
+		buf.WriteInt(limit)
 		rows, err := t.db.QueryContext(ctx, findSql+buf.String())
 		if err != nil {
 			return nil, fmt.Errorf("exec db_user.user_test all_data_ex failed, offset:%d limit:%d %w", offset, limit, err)
@@ -512,9 +548,9 @@ func (w *UserTestWhereStmt) applyLimitAndOffset() {
 		return
 	}
 	w.buf.Write([]byte(" limit "))
-	w.buf.WriteInt(w.limit)
-	w.buf.WriteByte(',')
 	w.buf.WriteInt(w.offset)
+	w.buf.WriteByte(',')
+	w.buf.WriteInt(w.limit)
 }
 
 func (w *UserTestWhereStmt) String() string {
@@ -776,9 +812,9 @@ func (x *UserTestNamedWhere) State() *UserTestNamedWhere {
 
 func (x *UserTestNamedWhere) Limit(limit, offset int) *UserTestNamedWhere {
 	x.buf.Write([]byte(" limit "))
-	x.buf.WriteInt(limit)
-	x.buf.WriteByte(',')
 	x.buf.WriteInt(offset)
+	x.buf.WriteByte(',')
+	x.buf.WriteInt(limit)
 	return x
 }
 
@@ -882,9 +918,9 @@ func (x *UserTestNamedOrderBy) State() *UserTestNamedOrderAsc {
 
 func (x *UserTestNamedOrderBy) Limit(limit, offset int) *UserTestNamedOrderBy {
 	x.buf.Write([]byte(" limit "))
-	x.buf.WriteInt(limit)
-	x.buf.WriteByte(',')
 	x.buf.WriteInt(offset)
+	x.buf.WriteByte(',')
+	x.buf.WriteInt(limit)
 	return x
 }
 
