@@ -1083,7 +1083,7 @@ func (x *UserInfoSQLWriter) Insert() *UserInfoNamedInsert {
 }
 
 func (x *UserInfoSQLWriter) Delete() *UserInfoNamedWhere {
-	x.buf.Write([]byte("delete user_info where "))
+	x.buf.Write([]byte("delete from user_info where "))
 	return &UserInfoNamedWhere{
 		buf: &x.buf,
 	}

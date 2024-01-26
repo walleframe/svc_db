@@ -29,6 +29,7 @@ message user_friend {
 
 message user_test {
 	sql.unique.uid = "uid"
+	sql.index.xxx ="uid,xxx"
 	int64 uid = 1 ;
 	int64 xxx = 2 ;
 	int8 state = 3;

@@ -26,6 +26,11 @@ type UserTestOperation interface {
 	CountByIndexUid(ctx context.Context, uid int64) (count int, err error)
 	DeleteByIndexUid(ctx context.Context, uid int64) (res sql.Result, err error)
 
+	FindByIndexXxx(ctx context.Context, uid int64, xxx int64, limit, offset int) (datas []*dbop.UserTest, err error)
+	FindExByIndexXxx(ctx context.Context, uid int64, xxx int64, limit, offset int) (datas []*dbop.UserTestEx, err error)
+	CountByIndexXxx(ctx context.Context, uid int64, xxx int64) (count int, err error)
+	DeleteByIndexXxx(ctx context.Context, uid int64, xxx int64) (res sql.Result, err error)
+
 	Where(bufSize int) *UserTestWhereStmt
 	Select(ctx context.Context, where *UserTestWhereStmt) (datas []*dbop.UserTest, err error)
 	SelectEx(ctx context.Context, where *UserTestWhereStmt) (datas []*dbop.UserTestEx, err error)
@@ -123,6 +128,7 @@ var (
 	}
 	UserTestSQL_TableIndex = map[string]string{
 		"user_test_uid": "create unique index user_test_uid on user_test(`uid`)",
+		"user_test_xxx": "create index user_test_xxx on user_test(`uid`,`xxx`)",
 	}
 )
 
@@ -136,6 +142,10 @@ type xUserTestOperation struct {
 	idxUidFindEx *sql.Stmt
 	idxUidCount  *sql.Stmt
 	idxUidDelete *sql.Stmt
+	idxXxxFind   *sql.Stmt
+	idxXxxFindEx *sql.Stmt
+	idxXxxCount  *sql.Stmt
+	idxXxxDelete *sql.Stmt
 }
 
 func NewUserTestOperation(db *sqlx.DB) (_ *xUserTestOperation, err error) {
@@ -254,6 +264,78 @@ func (t *xUserTestOperation) DeleteByIndexUid(ctx context.Context, uid int64) (r
 	res, err = t.idxUidDelete.ExecContext(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("exec db_user.user_test delete_by_index_uid failed,%w", err)
+	}
+	return
+}
+
+func (t *xUserTestOperation) FindByIndexXxx(ctx context.Context, uid int64, xxx int64, limit, offset int) (datas []*dbop.UserTest, err error) {
+	if t.idxXxxFind == nil {
+		t.idxXxxFind, err = t.db.PrepareContext(ctx, UserTestSQL_Find+" where `uid`=? and `xxx`=? limit ?,?")
+		if err != nil {
+			return nil, fmt.Errorf("prepare db_user.user_test find_by_index_xxx failed,%w", err)
+		}
+	}
+	rows, err := t.idxXxxFind.QueryContext(ctx, uid, xxx, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("exec db_user.user_test find_by_index_xxx failed,%w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		data, err := scanUserTest(rows)
+		if err != nil {
+			return nil, err
+		}
+		datas = append(datas, data)
+	}
+	return
+}
+func (t *xUserTestOperation) FindExByIndexXxx(ctx context.Context, uid int64, xxx int64, limit, offset int) (datas []*dbop.UserTestEx, err error) {
+	if t.idxXxxFindEx == nil {
+		t.idxXxxFindEx, err = t.db.PrepareContext(ctx, UserTestSQL_FindRow+" where `uid`=? and `xxx`=? limit ?,?")
+		if err != nil {
+			return nil, fmt.Errorf("prepare db_user.user_test findex_by_index_xxx failed,%w", err)
+		}
+	}
+	rows, err := t.idxXxxFindEx.QueryContext(ctx, uid, xxx, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("exec db_user.user_test findex_by_index_xxx failed,%w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		data, err := scanUserTestEx(rows)
+		if err != nil {
+			return nil, err
+		}
+		datas = append(datas, data)
+	}
+	return
+}
+func (t *xUserTestOperation) CountByIndexXxx(ctx context.Context, uid int64, xxx int64) (count int, err error) {
+	if t.idxXxxCount == nil {
+		t.idxXxxCount, err = t.db.PrepareContext(ctx, UserTestSQL_Count+" where `uid`=? and `xxx`=?")
+		if err != nil {
+			return 0, fmt.Errorf("prepare db_user.user_test count_by_index_xxx failed,%w", err)
+		}
+	}
+	err = t.idxXxxCount.QueryRowContext(ctx, uid, xxx).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("exec db_user.user_test count_by_index_xxx failed,%w", err)
+	}
+	return
+}
+
+func (t *xUserTestOperation) DeleteByIndexXxx(ctx context.Context, uid int64, xxx int64) (res sql.Result, err error) {
+	if t.idxXxxDelete == nil {
+		t.idxXxxDelete, err = t.db.PrepareContext(ctx, UserTestSQL_Delete+" where `uid`=? and `xxx`=?")
+		if err != nil {
+			return nil, fmt.Errorf("prepare db_user.user_test delete_by_index_xxx failed,%w", err)
+		}
+	}
+	res, err = t.idxXxxDelete.ExecContext(ctx, uid, xxx)
+	if err != nil {
+		return nil, fmt.Errorf("exec db_user.user_test delete_by_index_xxx failed,%w", err)
 	}
 	return
 }
@@ -661,7 +743,7 @@ func (x *UserTestSQLWriter) Insert() *UserTestNamedInsert {
 }
 
 func (x *UserTestSQLWriter) Delete() *UserTestNamedWhere {
-	x.buf.Write([]byte("delete user_test where "))
+	x.buf.Write([]byte("delete from user_test where "))
 	return &UserTestNamedWhere{
 		buf: &x.buf,
 	}

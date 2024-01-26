@@ -145,11 +145,11 @@ const (
 	UserFriendSQL_Insert        = "insert user_friend(`uid`,`fid`,`state`) values(?,?,?)"
 	UserFriendSQL_InsertValues  = ",(?,?,?)"
 	UserFriendSQL_InsertValues2 = ",(?,?,?)"
-	UserFriendSQL_Where1        = " where (`uid`=?,`fid`=?)"
-	UserFriendSQL_Where2        = " or (`uid`=?,`fid`=?)"
+	UserFriendSQL_Where1        = " where (`uid`=? and `fid`=?)"
+	UserFriendSQL_Where2        = " or (`uid`=? and `fid`=?)"
 	UserFriendSQL_Upsert        = "insert user_friend(`uid`,`fid`,`state`) values(?,?,?)"
 	UserFriendSQL_UpsertUpdate  = " on duplicate key update `uid`=values(`uid`),`fid`=values(`fid`),`state`=values(`state`)"
-	UserFriendSQL_Update        = "update user_friend set `state`=? where `uid`=?,`fid`=?"
+	UserFriendSQL_Update        = "update user_friend set `state`=? where `uid`=? and `fid`=?"
 	UserFriendSQL_Delete        = "delete from user_friend"
 	UserFriendSQL_Find          = "select `uid`,`fid`,`state` from user_friend"
 	UserFriendSQL_FindRow       = "select `uid`,`fid`,`state`,`modify_stamp`,`create_stamp` from user_friend"
@@ -209,15 +209,15 @@ func NewUserFriendOperation(db *sqlx.DB) (_ *xUserFriendOperation, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("prepare db_user.user_friend upsert failed,%w", err)
 	}
-	t.delete, err = db.Prepare(UserFriendSQL_Delete + " where `uid`=?,`fid`=?")
+	t.delete, err = db.Prepare(UserFriendSQL_Delete + " where `uid`=? and `fid`=?")
 	if err != nil {
 		return nil, fmt.Errorf("prepare db_user.user_friend delete failed,%w", err)
 	}
-	t.find, err = db.Prepare(UserFriendSQL_Find + " where `uid`=?,`fid`=?")
+	t.find, err = db.Prepare(UserFriendSQL_Find + " where `uid`=? and `fid`=?")
 	if err != nil {
 		return nil, fmt.Errorf("prepare db_user.user_friend find failed,%w", err)
 	}
-	t.findRow, err = db.Prepare(UserFriendSQL_FindRow + " where `uid`=?,`fid`=?")
+	t.findRow, err = db.Prepare(UserFriendSQL_FindRow + " where `uid`=? and `fid`=?")
 	if err != nil {
 		return nil, fmt.Errorf("prepare db_user.user_friend findex failed,%w", err)
 	}
@@ -956,7 +956,7 @@ func (x *UserFriendSQLWriter) Insert() *UserFriendNamedInsert {
 }
 
 func (x *UserFriendSQLWriter) Delete() *UserFriendNamedWhere {
-	x.buf.Write([]byte("delete user_friend where "))
+	x.buf.Write([]byte("delete from user_friend where "))
 	return &UserFriendNamedWhere{
 		buf: &x.buf,
 	}
