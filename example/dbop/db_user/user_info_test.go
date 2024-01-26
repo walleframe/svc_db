@@ -91,6 +91,12 @@ func TestUserInfo(t *testing.T) {
 		Email: "email101",
 	}))
 
+	cnt, err := user.Count(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.EqualValues(t, 2, cnt, "count")
+
 	v, err := user.Find(ctx, 100)
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +161,7 @@ func TestUserInfo(t *testing.T) {
 	}
 
 	checkError(user.FindExByIndexName(ctx, "10", 1, 0))
-	cnt, err := user.CountByIndexName(ctx, "10")
+	cnt, err = user.CountByIndexName(ctx, "10")
 	if err != nil {
 		t.Fatal(err)
 	}

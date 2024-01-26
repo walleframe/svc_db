@@ -50,6 +50,7 @@ type UserFriendOperation interface {
 	Where(bufSize int) *UserFriendWhereStmt
 	Select(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriend, err error)
 	SelectEx(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriendEx, err error)
+	Count(ctx context.Context, where *UserFriendWhereStmt) (count int, err error)
 
 	DeleteMany(ctx context.Context, where *UserFriendWhereStmt) (res sql.Result, err error)
 
@@ -560,9 +561,9 @@ func (t *xUserFriendOperation) Where(bufSize int) *UserFriendWhereStmt {
 }
 
 func (t *xUserFriendOperation) Select(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriend, err error) {
-	where.applyLimitAndOffset()
 	var findSql = UserFriendSQL_Find
 	if where != nil {
+		where.applyLimitAndOffset()
 		findSql += where.String()
 	}
 	rows, err := t.db.QueryContext(ctx, findSql)
@@ -581,10 +582,11 @@ func (t *xUserFriendOperation) Select(ctx context.Context, where *UserFriendWher
 	}
 	return
 }
+
 func (t *xUserFriendOperation) SelectEx(ctx context.Context, where *UserFriendWhereStmt) (datas []*dbop.UserFriendEx, err error) {
-	where.applyLimitAndOffset()
 	var findSql = UserFriendSQL_FindRow
 	if where != nil {
+		where.applyLimitAndOffset()
 		findSql += where.String()
 	}
 	rows, err := t.db.QueryContext(ctx, findSql)
@@ -599,6 +601,19 @@ func (t *xUserFriendOperation) SelectEx(ctx context.Context, where *UserFriendWh
 			return nil, err
 		}
 		datas = append(datas, data)
+	}
+	return
+}
+
+func (t *xUserFriendOperation) Count(ctx context.Context, where *UserFriendWhereStmt) (count int, err error) {
+	var findSql = UserFriendSQL_Count
+	if where != nil {
+		where.applyLimitAndOffset()
+		findSql += where.String()
+	}
+	err = t.db.QueryRowContext(ctx, findSql).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("exec db_user.user_friend count failed,%w", err)
 	}
 	return
 }
@@ -970,6 +985,18 @@ func (x *UserFriendNamedInsert) State() *UserFriendNamedInsert {
 	return x
 }
 
+func (x *UserFriendNamedInsert) ModifyStamp() *UserFriendNamedInsert {
+	x.list = append(x.list, "`modify_stamp`")
+	x.values = append(x.values, ":modify_stamp")
+	return x
+}
+
+func (x *UserFriendNamedInsert) CreateStamp() *UserFriendNamedInsert {
+	x.list = append(x.list, "`create_stamp`")
+	x.values = append(x.values, ":create_stamp")
+	return x
+}
+
 func (x *UserFriendNamedInsert) ToSQL() string {
 	x.buf.Write([]byte("insert user_friend("))
 	x.buf.WriteString(strings.Join(x.list, ","))
@@ -998,8 +1025,9 @@ func (x *UserFriendNamedUpdate) Uid() *UserFriendNamedUpdate {
 	}
 	if x.values != nil && *x.values {
 		x.buf.Write([]byte("`uid`=values(`uid`)"))
+	} else {
+		x.buf.Write([]byte("`uid`=:uid"))
 	}
-	x.buf.Write([]byte("`uid`=:uid"))
 	*x.n++
 	return x
 }
@@ -1010,8 +1038,9 @@ func (x *UserFriendNamedUpdate) Fid() *UserFriendNamedUpdate {
 	}
 	if x.values != nil && *x.values {
 		x.buf.Write([]byte("`fid`=values(`fid`)"))
+	} else {
+		x.buf.Write([]byte("`fid`=:fid"))
 	}
-	x.buf.Write([]byte("`fid`=:fid"))
 	*x.n++
 	return x
 }
@@ -1022,8 +1051,35 @@ func (x *UserFriendNamedUpdate) State() *UserFriendNamedUpdate {
 	}
 	if x.values != nil && *x.values {
 		x.buf.Write([]byte("`state`=values(`state`)"))
+	} else {
+		x.buf.Write([]byte("`state`=:state"))
 	}
-	x.buf.Write([]byte("`state`=:state"))
+	*x.n++
+	return x
+}
+
+func (x *UserFriendNamedUpdate) ModifyStamp() *UserFriendNamedUpdate {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	if x.values != nil && *x.values {
+		x.buf.Write([]byte("`modify_stamp`=values(`modify_stamp`)"))
+	} else {
+		x.buf.Write([]byte("`modify_stamp`=:modify_stamp"))
+	}
+	*x.n++
+	return x
+}
+
+func (x *UserFriendNamedUpdate) CreateStamp() *UserFriendNamedUpdate {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	if x.values != nil && *x.values {
+		x.buf.Write([]byte("`create_stamp`=values(`create_stamp`)"))
+	} else {
+		x.buf.Write([]byte("`create_stamp`=:create_stamp"))
+	}
 	*x.n++
 	return x
 }
@@ -1074,6 +1130,24 @@ func (x *UserFriendNamedSelect) State() *UserFriendNamedSelect {
 	return x
 }
 
+func (x *UserFriendNamedSelect) ModifyStamp() *UserFriendNamedSelect {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`modify_stamp`"))
+	*x.n++
+	return x
+}
+
+func (x *UserFriendNamedSelect) CreateStamp() *UserFriendNamedSelect {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`create_stamp`"))
+	*x.n++
+	return x
+}
+
 func (x *UserFriendNamedSelect) Where() *UserFriendNamedWhere {
 	x.buf.Write([]byte(" from user_friend where "))
 	return &UserFriendNamedWhere{
@@ -1102,6 +1176,16 @@ func (x *UserFriendNamedWhere) Fid() *UserFriendNamedWhere {
 
 func (x *UserFriendNamedWhere) State() *UserFriendNamedWhere {
 	x.buf.Write([]byte("`state` = :state"))
+	return x
+}
+
+func (x *UserFriendNamedWhere) ModifyStamp() *UserFriendNamedWhere {
+	x.buf.Write([]byte("`modify_stamp` = :modify_stamp"))
+	return x
+}
+
+func (x *UserFriendNamedWhere) CreateStamp() *UserFriendNamedWhere {
+	x.buf.Write([]byte("`create_stamp` = :create_stamp"))
 	return x
 }
 
@@ -1204,6 +1288,30 @@ func (x *UserFriendNamedOrderBy) State() *UserFriendNamedOrderAsc {
 		x.buf.WriteByte(',')
 	}
 	x.buf.Write([]byte("`state`"))
+	*x.n++
+	return &UserFriendNamedOrderAsc{
+		buf: x.buf,
+		n:   x.n,
+	}
+}
+
+func (x *UserFriendNamedOrderAsc) ModifyStamp() *UserFriendNamedOrderAsc {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`modify_stamp`"))
+	*x.n++
+	return &UserFriendNamedOrderAsc{
+		buf: x.buf,
+		n:   x.n,
+	}
+}
+
+func (x *UserFriendNamedOrderAsc) CreateStamp() *UserFriendNamedOrderAsc {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`create_stamp`"))
 	*x.n++
 	return &UserFriendNamedOrderAsc{
 		buf: x.buf,

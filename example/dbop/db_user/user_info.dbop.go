@@ -40,19 +40,20 @@ type UserInfoOperation interface {
 	FindExByKeyArray(ctx context.Context, ids []UserInfoKey) (datas []*dbop.UserInfoEx, err error)
 	DeleteByKeyArray(ctx context.Context, ids []UserInfoKey) (res sql.Result, err error)
 
-	FindByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfo, err error)
-	FindExByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfoEx, err error)
-	CountByIndexName(ctx context.Context, name string) (count int, err error)
-	DeleteByIndexName(ctx context.Context, name string) (res sql.Result, err error)
-
 	FindByIndexEmail(ctx context.Context, email string, limit, offset int) (datas []*dbop.UserInfo, err error)
 	FindExByIndexEmail(ctx context.Context, email string, limit, offset int) (datas []*dbop.UserInfoEx, err error)
 	CountByIndexEmail(ctx context.Context, email string) (count int, err error)
 	DeleteByIndexEmail(ctx context.Context, email string) (res sql.Result, err error)
 
+	FindByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfo, err error)
+	FindExByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfoEx, err error)
+	CountByIndexName(ctx context.Context, name string) (count int, err error)
+	DeleteByIndexName(ctx context.Context, name string) (res sql.Result, err error)
+
 	Where(bufSize int) *UserInfoWhereStmt
 	Select(ctx context.Context, where *UserInfoWhereStmt) (datas []*dbop.UserInfo, err error)
 	SelectEx(ctx context.Context, where *UserInfoWhereStmt) (datas []*dbop.UserInfoEx, err error)
+	Count(ctx context.Context, where *UserInfoWhereStmt) (count int, err error)
 
 	DeleteMany(ctx context.Context, where *UserInfoWhereStmt) (res sql.Result, err error)
 
@@ -168,8 +169,8 @@ var (
 		"email": "alter table user_info add `email` varchar(64) not null default '';",
 	}
 	UserInfoSQL_TableIndex = map[string]string{
-		"user_info_name":  "create unique index user_info_name on user_info(`name`)",
 		"user_info_email": "create index user_info_email on user_info(`email`)",
+		"user_info_name":  "create unique index user_info_name on user_info(`name`)",
 	}
 )
 
@@ -185,14 +186,14 @@ type xUserInfoOperation struct {
 	delete         *sql.Stmt
 	find           *sql.Stmt
 	findRow        *sql.Stmt
-	idxNameFind    *sql.Stmt
-	idxNameFindEx  *sql.Stmt
-	idxNameCount   *sql.Stmt
-	idxNameDelete  *sql.Stmt
 	idxEmailFind   *sql.Stmt
 	idxEmailFindEx *sql.Stmt
 	idxEmailCount  *sql.Stmt
 	idxEmailDelete *sql.Stmt
+	idxNameFind    *sql.Stmt
+	idxNameFindEx  *sql.Stmt
+	idxNameCount   *sql.Stmt
+	idxNameDelete  *sql.Stmt
 }
 
 func NewUserInfoOperation(db *sqlx.DB) (_ *xUserInfoOperation, err error) {
@@ -535,78 +536,6 @@ func (t *xUserInfoOperation) DeleteByKeyArray(ctx context.Context, ids []UserInf
 	return
 }
 
-func (t *xUserInfoOperation) FindByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfo, err error) {
-	if t.idxNameFind == nil {
-		t.idxNameFind, err = t.db.PrepareContext(ctx, UserInfoSQL_Find+" where `name`=? limit ?,?")
-		if err != nil {
-			return nil, fmt.Errorf("prepare db_user.user_info find_by_index_name failed,%w", err)
-		}
-	}
-	rows, err := t.idxNameFind.QueryContext(ctx, name, offset, limit)
-	if err != nil {
-		return nil, fmt.Errorf("exec db_user.user_info find_by_index_name failed,%w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		data, err := scanUserInfo(rows)
-		if err != nil {
-			return nil, err
-		}
-		datas = append(datas, data)
-	}
-	return
-}
-func (t *xUserInfoOperation) FindExByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfoEx, err error) {
-	if t.idxNameFindEx == nil {
-		t.idxNameFindEx, err = t.db.PrepareContext(ctx, UserInfoSQL_FindRow+" where `name`=? limit ?,?")
-		if err != nil {
-			return nil, fmt.Errorf("prepare db_user.user_info findex_by_index_name failed,%w", err)
-		}
-	}
-	rows, err := t.idxNameFindEx.QueryContext(ctx, name, offset, limit)
-	if err != nil {
-		return nil, fmt.Errorf("exec db_user.user_info findex_by_index_name failed,%w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		data, err := scanUserInfoEx(rows)
-		if err != nil {
-			return nil, err
-		}
-		datas = append(datas, data)
-	}
-	return
-}
-func (t *xUserInfoOperation) CountByIndexName(ctx context.Context, name string) (count int, err error) {
-	if t.idxNameCount == nil {
-		t.idxNameCount, err = t.db.PrepareContext(ctx, UserInfoSQL_Count+" where `name`=?")
-		if err != nil {
-			return 0, fmt.Errorf("prepare db_user.user_info count_by_index_name failed,%w", err)
-		}
-	}
-	err = t.idxNameCount.QueryRowContext(ctx, name).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("exec db_user.user_info count_by_index_name failed,%w", err)
-	}
-	return
-}
-
-func (t *xUserInfoOperation) DeleteByIndexName(ctx context.Context, name string) (res sql.Result, err error) {
-	if t.idxNameDelete == nil {
-		t.idxNameDelete, err = t.db.PrepareContext(ctx, UserInfoSQL_Delete+" where `name`=?")
-		if err != nil {
-			return nil, fmt.Errorf("prepare db_user.user_info delete_by_index_name failed,%w", err)
-		}
-	}
-	res, err = t.idxNameDelete.ExecContext(ctx, name)
-	if err != nil {
-		return nil, fmt.Errorf("exec db_user.user_info delete_by_index_name failed,%w", err)
-	}
-	return
-}
-
 func (t *xUserInfoOperation) FindByIndexEmail(ctx context.Context, email string, limit, offset int) (datas []*dbop.UserInfo, err error) {
 	if t.idxEmailFind == nil {
 		t.idxEmailFind, err = t.db.PrepareContext(ctx, UserInfoSQL_Find+" where `email`=? limit ?,?")
@@ -679,6 +608,78 @@ func (t *xUserInfoOperation) DeleteByIndexEmail(ctx context.Context, email strin
 	return
 }
 
+func (t *xUserInfoOperation) FindByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfo, err error) {
+	if t.idxNameFind == nil {
+		t.idxNameFind, err = t.db.PrepareContext(ctx, UserInfoSQL_Find+" where `name`=? limit ?,?")
+		if err != nil {
+			return nil, fmt.Errorf("prepare db_user.user_info find_by_index_name failed,%w", err)
+		}
+	}
+	rows, err := t.idxNameFind.QueryContext(ctx, name, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("exec db_user.user_info find_by_index_name failed,%w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		data, err := scanUserInfo(rows)
+		if err != nil {
+			return nil, err
+		}
+		datas = append(datas, data)
+	}
+	return
+}
+func (t *xUserInfoOperation) FindExByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfoEx, err error) {
+	if t.idxNameFindEx == nil {
+		t.idxNameFindEx, err = t.db.PrepareContext(ctx, UserInfoSQL_FindRow+" where `name`=? limit ?,?")
+		if err != nil {
+			return nil, fmt.Errorf("prepare db_user.user_info findex_by_index_name failed,%w", err)
+		}
+	}
+	rows, err := t.idxNameFindEx.QueryContext(ctx, name, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("exec db_user.user_info findex_by_index_name failed,%w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		data, err := scanUserInfoEx(rows)
+		if err != nil {
+			return nil, err
+		}
+		datas = append(datas, data)
+	}
+	return
+}
+func (t *xUserInfoOperation) CountByIndexName(ctx context.Context, name string) (count int, err error) {
+	if t.idxNameCount == nil {
+		t.idxNameCount, err = t.db.PrepareContext(ctx, UserInfoSQL_Count+" where `name`=?")
+		if err != nil {
+			return 0, fmt.Errorf("prepare db_user.user_info count_by_index_name failed,%w", err)
+		}
+	}
+	err = t.idxNameCount.QueryRowContext(ctx, name).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("exec db_user.user_info count_by_index_name failed,%w", err)
+	}
+	return
+}
+
+func (t *xUserInfoOperation) DeleteByIndexName(ctx context.Context, name string) (res sql.Result, err error) {
+	if t.idxNameDelete == nil {
+		t.idxNameDelete, err = t.db.PrepareContext(ctx, UserInfoSQL_Delete+" where `name`=?")
+		if err != nil {
+			return nil, fmt.Errorf("prepare db_user.user_info delete_by_index_name failed,%w", err)
+		}
+	}
+	res, err = t.idxNameDelete.ExecContext(ctx, name)
+	if err != nil {
+		return nil, fmt.Errorf("exec db_user.user_info delete_by_index_name failed,%w", err)
+	}
+	return
+}
+
 func (t *xUserInfoOperation) Where(bufSize int) *UserInfoWhereStmt {
 	w := &UserInfoWhereStmt{}
 	w.buf.Grow(bufSize)
@@ -687,9 +688,9 @@ func (t *xUserInfoOperation) Where(bufSize int) *UserInfoWhereStmt {
 }
 
 func (t *xUserInfoOperation) Select(ctx context.Context, where *UserInfoWhereStmt) (datas []*dbop.UserInfo, err error) {
-	where.applyLimitAndOffset()
 	var findSql = UserInfoSQL_Find
 	if where != nil {
+		where.applyLimitAndOffset()
 		findSql += where.String()
 	}
 	rows, err := t.db.QueryContext(ctx, findSql)
@@ -708,10 +709,11 @@ func (t *xUserInfoOperation) Select(ctx context.Context, where *UserInfoWhereStm
 	}
 	return
 }
+
 func (t *xUserInfoOperation) SelectEx(ctx context.Context, where *UserInfoWhereStmt) (datas []*dbop.UserInfoEx, err error) {
-	where.applyLimitAndOffset()
 	var findSql = UserInfoSQL_FindRow
 	if where != nil {
+		where.applyLimitAndOffset()
 		findSql += where.String()
 	}
 	rows, err := t.db.QueryContext(ctx, findSql)
@@ -726,6 +728,19 @@ func (t *xUserInfoOperation) SelectEx(ctx context.Context, where *UserInfoWhereS
 			return nil, err
 		}
 		datas = append(datas, data)
+	}
+	return
+}
+
+func (t *xUserInfoOperation) Count(ctx context.Context, where *UserInfoWhereStmt) (count int, err error) {
+	var findSql = UserInfoSQL_Count
+	if where != nil {
+		where.applyLimitAndOffset()
+		findSql += where.String()
+	}
+	err = t.db.QueryRowContext(ctx, findSql).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("exec db_user.user_info count failed,%w", err)
 	}
 	return
 }
@@ -1097,6 +1112,18 @@ func (x *UserInfoNamedInsert) Email() *UserInfoNamedInsert {
 	return x
 }
 
+func (x *UserInfoNamedInsert) ModifyStamp() *UserInfoNamedInsert {
+	x.list = append(x.list, "`modify_stamp`")
+	x.values = append(x.values, ":modify_stamp")
+	return x
+}
+
+func (x *UserInfoNamedInsert) CreateStamp() *UserInfoNamedInsert {
+	x.list = append(x.list, "`create_stamp`")
+	x.values = append(x.values, ":create_stamp")
+	return x
+}
+
 func (x *UserInfoNamedInsert) ToSQL() string {
 	x.buf.Write([]byte("insert user_info("))
 	x.buf.WriteString(strings.Join(x.list, ","))
@@ -1125,8 +1152,9 @@ func (x *UserInfoNamedUpdate) Uid() *UserInfoNamedUpdate {
 	}
 	if x.values != nil && *x.values {
 		x.buf.Write([]byte("`uid`=values(`uid`)"))
+	} else {
+		x.buf.Write([]byte("`uid`=:uid"))
 	}
-	x.buf.Write([]byte("`uid`=:uid"))
 	*x.n++
 	return x
 }
@@ -1137,8 +1165,9 @@ func (x *UserInfoNamedUpdate) Name() *UserInfoNamedUpdate {
 	}
 	if x.values != nil && *x.values {
 		x.buf.Write([]byte("`name`=values(`name`)"))
+	} else {
+		x.buf.Write([]byte("`name`=:name"))
 	}
-	x.buf.Write([]byte("`name`=:name"))
 	*x.n++
 	return x
 }
@@ -1149,8 +1178,35 @@ func (x *UserInfoNamedUpdate) Email() *UserInfoNamedUpdate {
 	}
 	if x.values != nil && *x.values {
 		x.buf.Write([]byte("`email`=values(`email`)"))
+	} else {
+		x.buf.Write([]byte("`email`=:email"))
 	}
-	x.buf.Write([]byte("`email`=:email"))
+	*x.n++
+	return x
+}
+
+func (x *UserInfoNamedUpdate) ModifyStamp() *UserInfoNamedUpdate {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	if x.values != nil && *x.values {
+		x.buf.Write([]byte("`modify_stamp`=values(`modify_stamp`)"))
+	} else {
+		x.buf.Write([]byte("`modify_stamp`=:modify_stamp"))
+	}
+	*x.n++
+	return x
+}
+
+func (x *UserInfoNamedUpdate) CreateStamp() *UserInfoNamedUpdate {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	if x.values != nil && *x.values {
+		x.buf.Write([]byte("`create_stamp`=values(`create_stamp`)"))
+	} else {
+		x.buf.Write([]byte("`create_stamp`=:create_stamp"))
+	}
 	*x.n++
 	return x
 }
@@ -1201,6 +1257,24 @@ func (x *UserInfoNamedSelect) Email() *UserInfoNamedSelect {
 	return x
 }
 
+func (x *UserInfoNamedSelect) ModifyStamp() *UserInfoNamedSelect {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`modify_stamp`"))
+	*x.n++
+	return x
+}
+
+func (x *UserInfoNamedSelect) CreateStamp() *UserInfoNamedSelect {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`create_stamp`"))
+	*x.n++
+	return x
+}
+
 func (x *UserInfoNamedSelect) Where() *UserInfoNamedWhere {
 	x.buf.Write([]byte(" from user_info where "))
 	return &UserInfoNamedWhere{
@@ -1229,6 +1303,16 @@ func (x *UserInfoNamedWhere) Name() *UserInfoNamedWhere {
 
 func (x *UserInfoNamedWhere) Email() *UserInfoNamedWhere {
 	x.buf.Write([]byte("`email` = :email"))
+	return x
+}
+
+func (x *UserInfoNamedWhere) ModifyStamp() *UserInfoNamedWhere {
+	x.buf.Write([]byte("`modify_stamp` = :modify_stamp"))
+	return x
+}
+
+func (x *UserInfoNamedWhere) CreateStamp() *UserInfoNamedWhere {
+	x.buf.Write([]byte("`create_stamp` = :create_stamp"))
 	return x
 }
 
@@ -1331,6 +1415,30 @@ func (x *UserInfoNamedOrderBy) Email() *UserInfoNamedOrderAsc {
 		x.buf.WriteByte(',')
 	}
 	x.buf.Write([]byte("`email`"))
+	*x.n++
+	return &UserInfoNamedOrderAsc{
+		buf: x.buf,
+		n:   x.n,
+	}
+}
+
+func (x *UserInfoNamedOrderAsc) ModifyStamp() *UserInfoNamedOrderAsc {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`modify_stamp`"))
+	*x.n++
+	return &UserInfoNamedOrderAsc{
+		buf: x.buf,
+		n:   x.n,
+	}
+}
+
+func (x *UserInfoNamedOrderAsc) CreateStamp() *UserInfoNamedOrderAsc {
+	if *x.n > 0 {
+		x.buf.WriteByte(',')
+	}
+	x.buf.Write([]byte("`create_stamp`"))
 	*x.n++
 	return &UserInfoNamedOrderAsc{
 		buf: x.buf,
