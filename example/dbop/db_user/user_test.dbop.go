@@ -64,7 +64,7 @@ func init() {
 			return fmt.Errorf("swap db_user.user_test pointer, sync index failed, %w", err)
 		}
 		//
-		tableOP, err := newUserTestOperation(db)
+		tableOP, err := NewUserTestOperation(db)
 		if err != nil {
 			return fmt.Errorf("swap db_user.user_test pointer, new table operation failed, %w", err)
 		}
@@ -127,7 +127,7 @@ type xUserTestOperation struct {
 	idxUidDelete *sql.Stmt
 }
 
-func newUserTestOperation(db *sqlx.DB) (_ *xUserTestOperation, err error) {
+func NewUserTestOperation(db *sqlx.DB) (_ *xUserTestOperation, err error) {
 	t := &xUserTestOperation{
 		db: db,
 	}

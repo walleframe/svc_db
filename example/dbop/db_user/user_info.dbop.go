@@ -88,7 +88,7 @@ func init() {
 			return fmt.Errorf("swap db_user.user_info pointer, sync index failed, %w", err)
 		}
 		//
-		tableOP, err := newUserInfoOperation(db)
+		tableOP, err := NewUserInfoOperation(db)
 		if err != nil {
 			return fmt.Errorf("swap db_user.user_info pointer, new table operation failed, %w", err)
 		}
@@ -185,7 +185,7 @@ type xUserInfoOperation struct {
 	idxEmailDelete *sql.Stmt
 }
 
-func newUserInfoOperation(db *sqlx.DB) (_ *xUserInfoOperation, err error) {
+func NewUserInfoOperation(db *sqlx.DB) (_ *xUserInfoOperation, err error) {
 	t := &xUserInfoOperation{
 		db: db,
 	}

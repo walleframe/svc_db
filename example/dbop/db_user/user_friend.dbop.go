@@ -85,7 +85,7 @@ func init() {
 			return fmt.Errorf("swap db_user.user_friend pointer, sync index failed, %w", err)
 		}
 		//
-		tableOP, err := newUserFriendOperation(db)
+		tableOP, err := NewUserFriendOperation(db)
 		if err != nil {
 			return fmt.Errorf("swap db_user.user_friend pointer, new table operation failed, %w", err)
 		}
@@ -181,7 +181,7 @@ type xUserFriendOperation struct {
 	idxUidDelete *sql.Stmt
 }
 
-func newUserFriendOperation(db *sqlx.DB) (_ *xUserFriendOperation, err error) {
+func NewUserFriendOperation(db *sqlx.DB) (_ *xUserFriendOperation, err error) {
 	t := &xUserFriendOperation{
 		db: db,
 	}
