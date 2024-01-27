@@ -153,12 +153,12 @@ const (
 	UserInfoSQL_FindRow       = "select `uid`,`name`,`email`,`modify_stamp`,`create_stamp` from user_info"
 	UserInfoSQL_Count         = "select count(*) from user_info"
 	UserInfoSQL_Create        = "create table user_info (" +
-		"`uid` bigint not null auto_increment," +
-		"`name` varchar(128) not null default ''," +
-		"`email` varchar(64) not null default ''," +
-		"`modify_stamp` timestamp default current_timestamp on update current_timestamp," +
-		"`create_stamp` timestamp default current_timestamp" + "," +
-		"PRIMARY KEY ( `uid`)" +
+		"`uid` bigint not null auto_increment" +
+		",`name` varchar(128) not null default ''" +
+		",`email` varchar(64) not null default ''" +
+		",`modify_stamp` timestamp default current_timestamp on update current_timestamp" +
+		",`create_stamp` timestamp default current_timestamp" +
+		",PRIMARY KEY ( `uid`)" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
 )
 
@@ -558,6 +558,7 @@ func (t *xUserInfoOperation) FindByIndexEmail(ctx context.Context, email string,
 	}
 	return
 }
+
 func (t *xUserInfoOperation) FindExByIndexEmail(ctx context.Context, email string, limit, offset int) (datas []*dbop.UserInfoEx, err error) {
 	if t.idxEmailFindEx == nil {
 		t.idxEmailFindEx, err = t.db.PrepareContext(ctx, UserInfoSQL_FindRow+" where `email`=? limit ?,?")
@@ -580,6 +581,7 @@ func (t *xUserInfoOperation) FindExByIndexEmail(ctx context.Context, email strin
 	}
 	return
 }
+
 func (t *xUserInfoOperation) CountByIndexEmail(ctx context.Context, email string) (count int, err error) {
 	if t.idxEmailCount == nil {
 		t.idxEmailCount, err = t.db.PrepareContext(ctx, UserInfoSQL_Count+" where `email`=?")
@@ -630,6 +632,7 @@ func (t *xUserInfoOperation) FindByIndexName(ctx context.Context, name string, l
 	}
 	return
 }
+
 func (t *xUserInfoOperation) FindExByIndexName(ctx context.Context, name string, limit, offset int) (datas []*dbop.UserInfoEx, err error) {
 	if t.idxNameFindEx == nil {
 		t.idxNameFindEx, err = t.db.PrepareContext(ctx, UserInfoSQL_FindRow+" where `name`=? limit ?,?")
@@ -652,6 +655,7 @@ func (t *xUserInfoOperation) FindExByIndexName(ctx context.Context, name string,
 	}
 	return
 }
+
 func (t *xUserInfoOperation) CountByIndexName(ctx context.Context, name string) (count int, err error) {
 	if t.idxNameCount == nil {
 		t.idxNameCount, err = t.db.PrepareContext(ctx, UserInfoSQL_Count+" where `name`=?")

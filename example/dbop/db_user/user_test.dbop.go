@@ -112,11 +112,11 @@ const (
 	UserTestSQL_FindRow       = "select `uid`,`xxx`,`state`,`modify_stamp`,`create_stamp` from user_test"
 	UserTestSQL_Count         = "select count(*) from user_test"
 	UserTestSQL_Create        = "create table user_test (" +
-		"`uid` bigint not null default 0," +
-		"`xxx` bigint not null default 0," +
-		"`state` tinyint not null default 0," +
-		"`modify_stamp` timestamp default current_timestamp on update current_timestamp," +
-		"`create_stamp` timestamp default current_timestamp" +
+		"`uid` bigint not null default 0" +
+		",`xxx` bigint not null default 0" +
+		",`state` tinyint not null default 0" +
+		",`modify_stamp` timestamp default current_timestamp on update current_timestamp" +
+		",`create_stamp` timestamp default current_timestamp" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
 )
 
@@ -218,6 +218,7 @@ func (t *xUserTestOperation) FindByIndexUid(ctx context.Context, uid int64, limi
 	}
 	return
 }
+
 func (t *xUserTestOperation) FindExByIndexUid(ctx context.Context, uid int64, limit, offset int) (datas []*dbop.UserTestEx, err error) {
 	if t.idxUidFindEx == nil {
 		t.idxUidFindEx, err = t.db.PrepareContext(ctx, UserTestSQL_FindRow+" where `uid`=? limit ?,?")
@@ -240,6 +241,7 @@ func (t *xUserTestOperation) FindExByIndexUid(ctx context.Context, uid int64, li
 	}
 	return
 }
+
 func (t *xUserTestOperation) CountByIndexUid(ctx context.Context, uid int64) (count int, err error) {
 	if t.idxUidCount == nil {
 		t.idxUidCount, err = t.db.PrepareContext(ctx, UserTestSQL_Count+" where `uid`=?")
@@ -290,6 +292,7 @@ func (t *xUserTestOperation) FindByIndexXxx(ctx context.Context, uid int64, xxx 
 	}
 	return
 }
+
 func (t *xUserTestOperation) FindExByIndexXxx(ctx context.Context, uid int64, xxx int64, limit, offset int) (datas []*dbop.UserTestEx, err error) {
 	if t.idxXxxFindEx == nil {
 		t.idxXxxFindEx, err = t.db.PrepareContext(ctx, UserTestSQL_FindRow+" where `uid`=? and `xxx`=? limit ?,?")
@@ -312,6 +315,7 @@ func (t *xUserTestOperation) FindExByIndexXxx(ctx context.Context, uid int64, xx
 	}
 	return
 }
+
 func (t *xUserTestOperation) CountByIndexXxx(ctx context.Context, uid int64, xxx int64) (count int, err error) {
 	if t.idxXxxCount == nil {
 		t.idxXxxCount, err = t.db.PrepareContext(ctx, UserTestSQL_Count+" where `uid`=? and `xxx`=?")

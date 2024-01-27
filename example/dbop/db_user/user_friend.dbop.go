@@ -155,12 +155,12 @@ const (
 	UserFriendSQL_FindRow       = "select `uid`,`fid`,`state`,`modify_stamp`,`create_stamp` from user_friend"
 	UserFriendSQL_Count         = "select count(*) from user_friend"
 	UserFriendSQL_Create        = "create table user_friend (" +
-		"`uid` bigint not null default 0," +
-		"`fid` bigint not null default 0," +
-		"`state` tinyint not null default 0," +
-		"`modify_stamp` timestamp default current_timestamp on update current_timestamp," +
-		"`create_stamp` timestamp default current_timestamp" + "," +
-		"PRIMARY KEY ( `uid`,`fid`)" +
+		"`uid` bigint not null default 0" +
+		",`fid` bigint not null default 0" +
+		",`state` tinyint not null default 0" +
+		",`modify_stamp` timestamp default current_timestamp on update current_timestamp" +
+		",`create_stamp` timestamp default current_timestamp" +
+		",PRIMARY KEY ( `uid`,`fid`)" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
 )
 
@@ -503,6 +503,7 @@ func (t *xUserFriendOperation) FindByIndexUid(ctx context.Context, uid int64, li
 	}
 	return
 }
+
 func (t *xUserFriendOperation) FindExByIndexUid(ctx context.Context, uid int64, limit, offset int) (datas []*dbop.UserFriendEx, err error) {
 	if t.idxUidFindEx == nil {
 		t.idxUidFindEx, err = t.db.PrepareContext(ctx, UserFriendSQL_FindRow+" where `uid`=? limit ?,?")
@@ -525,6 +526,7 @@ func (t *xUserFriendOperation) FindExByIndexUid(ctx context.Context, uid int64, 
 	}
 	return
 }
+
 func (t *xUserFriendOperation) CountByIndexUid(ctx context.Context, uid int64) (count int, err error) {
 	if t.idxUidCount == nil {
 		t.idxUidCount, err = t.db.PrepareContext(ctx, UserFriendSQL_Count+" where `uid`=?")

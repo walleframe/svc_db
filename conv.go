@@ -161,6 +161,9 @@ func RawToStampInt64(val sql.RawBytes) (int64, error) {
 }
 
 func AnyFromStampInt64(val int64) any {
+	if val == 0 {
+		time.Now().Format(time.DateTime)
+	}
 	return time.Unix(val, 0).Format(time.DateTime)
 }
 

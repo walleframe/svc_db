@@ -26,11 +26,41 @@ message user_friend {
 	int8 state = 3;
 }
 
-
 message user_test {
 	sql.unique.uid = "uid"
 	sql.index.xxx ="uid,xxx"
 	int64 uid = 1 ;
 	int64 xxx = 2 ;
 	int8 state = 3;
+}
+
+message user_test_2 {
+	sql.unique.unique_test = "uid,xxx"
+	sql.index.xxx ="uid"
+	int64 uid = 1 {
+	    sql.custom = true
+		sql.pk = true
+    };
+	int64 xxx = 2 ;
+	int8 state = 3 ;
+	string custom_val = 4{
+	    sql.custom = true
+    }
+}
+
+message user_xx_log {
+	sql.pk = "id"
+	sql.engine = "MyISAM"
+	sql.ex = false
+	sql.update = false
+	sql.upsert = false
+	int64 id = 1 {
+		sql.auto_incr = true
+	}
+	int64 uid = 2;
+	int64 xx = 3;
+	string x2 = 4;
+	int64 create_stamp = 5{
+		sql.type = "timestamp default current_timestamp"
+	}
 }

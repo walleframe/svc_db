@@ -859,3 +859,484 @@ func (x ZapArrayUserTestEx) MarshalLogArray(ae zapcore.ArrayEncoder) error {
 func LogArrayUserTestEx(name string, v []*UserTestEx) zap.Field {
 	return zap.Array(name, ZapArrayUserTestEx(v))
 }
+
+type UserTest2 struct {
+	Uid       int64  `json:"uid,omitempty" db:"uid"`
+	Xxx       int64  `json:"xxx,omitempty" db:"xxx"`
+	State     int8   `json:"state,omitempty" db:"state"`
+	CustomVal string `json:"custom_val,omitempty" db:"custom_val"`
+}
+
+func (x *UserTest2) Reset() {
+	*x = UserTest2{}
+}
+
+// MarshalObject marshal data to []byte
+func (x *UserTest2) MarshalObject() (data []byte, err error) {
+	data = make([]byte, 0, x.MarshalSize())
+	return x.MarshalObjectTo(data)
+}
+
+// MarshalSize calc marshal data need space
+func (x *UserTest2) MarshalSize() (size int) {
+	if x.Uid != 0 {
+		// 1 = protowire.SizeTag(1)
+		size += 1 + protowire.SizeVarint(uint64(x.Uid))
+	}
+	if x.Xxx != 0 {
+		// 1 = protowire.SizeTag(2)
+		size += 1 + protowire.SizeVarint(uint64(x.Xxx))
+	}
+	if x.State != 0 {
+		// 1 = protowire.SizeTag(3)
+		size += 1 + protowire.SizeVarint(uint64(x.State))
+	}
+	if len(x.CustomVal) > 0 {
+		// 1 = protowire.SizeTag(4)
+		size += 1 + protowire.SizeBytes(len(x.CustomVal))
+	}
+	return
+}
+
+// MarshalObjectTo marshal data to []byte
+func (x *UserTest2) MarshalObjectTo(buf []byte) (data []byte, err error) {
+	data = buf
+	if x.Uid != 0 {
+		// data = protowire.AppendTag(data, 1, protowire.VarintType) => 00001000
+		data = append(data, 0x8)
+		data = protowire.AppendVarint(data, uint64(x.Uid))
+	}
+	if x.Xxx != 0 {
+		// data = protowire.AppendTag(data, 2, protowire.VarintType) => 00010000
+		data = append(data, 0x10)
+		data = protowire.AppendVarint(data, uint64(x.Xxx))
+	}
+	if x.State != 0 {
+		// data = protowire.AppendTag(data, 3, protowire.VarintType) => 00011000
+		data = append(data, 0x18)
+		data = protowire.AppendVarint(data, uint64(x.State))
+	}
+	if len(x.CustomVal) > 0 {
+		// data = protowire.AppendTag(data, 4, protowire.BytesType) => 00100010
+		data = append(data, 0x22)
+		data = protowire.AppendString(data, x.CustomVal)
+	}
+	return
+}
+
+// UnmarshalObject unmarshal data from []byte
+func (x *UserTest2) UnmarshalObject(data []byte) (err error) {
+	index := 0
+	for index < len(data) {
+		num, typ, cnt := protowire.ConsumeTag(data[index:])
+		if num == 0 {
+			err = errors.New("invalid tag")
+			return
+		}
+
+		index += cnt
+		switch num {
+		case 1:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2.Uid ID:1 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Uid = int64(v)
+		case 2:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2.Xxx ID:2 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Xxx = int64(v)
+		case 3:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2.State ID:3 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.State = int8(v)
+		case 4:
+			v, cnt := protowire.ConsumeString(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2.CustomVal ID:4 : invalid len value")
+				return
+			}
+			index += cnt
+			x.CustomVal = v
+		default: // skip fields
+			cnt = protowire.ConsumeFieldValue(num, typ, data[index:])
+			if cnt < 0 {
+				return protowire.ParseError(cnt)
+			}
+			index += cnt
+		}
+	}
+
+	return
+}
+
+func (x *UserTest2) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddInt64("uid", x.Uid)
+	enc.AddInt64("xxx", x.Xxx)
+	enc.AddInt8("state", x.State)
+	enc.AddString("custom_val", x.CustomVal)
+	return nil
+}
+
+type ZapArrayUserTest2 []*UserTest2
+
+func (x ZapArrayUserTest2) MarshalLogArray(ae zapcore.ArrayEncoder) error {
+	for _, v := range x {
+		ae.AppendObject(v)
+	}
+	return nil
+}
+
+func LogArrayUserTest2(name string, v []*UserTest2) zap.Field {
+	return zap.Array(name, ZapArrayUserTest2(v))
+}
+
+// sql row extern data
+type UserTest2Ex struct {
+	Uid         int64  `json:"uid,omitempty" db:"uid"`
+	Xxx         int64  `json:"xxx,omitempty" db:"xxx"`
+	State       int8   `json:"state,omitempty" db:"state"`
+	CustomVal   string `json:"custom_val,omitempty" db:"custom_val"`
+	ModifyStamp int64  `json:"modify_stamp,omitempty" db:"modify_stamp"`
+	CreateStamp int64  `json:"create_stamp,omitempty" db:"create_stamp"`
+}
+
+func (x *UserTest2Ex) Reset() {
+	*x = UserTest2Ex{}
+}
+
+// MarshalObject marshal data to []byte
+func (x *UserTest2Ex) MarshalObject() (data []byte, err error) {
+	data = make([]byte, 0, x.MarshalSize())
+	return x.MarshalObjectTo(data)
+}
+
+// MarshalSize calc marshal data need space
+func (x *UserTest2Ex) MarshalSize() (size int) {
+	if x.Uid != 0 {
+		// 1 = protowire.SizeTag(1)
+		size += 1 + protowire.SizeVarint(uint64(x.Uid))
+	}
+	if x.Xxx != 0 {
+		// 1 = protowire.SizeTag(2)
+		size += 1 + protowire.SizeVarint(uint64(x.Xxx))
+	}
+	if x.State != 0 {
+		// 1 = protowire.SizeTag(3)
+		size += 1 + protowire.SizeVarint(uint64(x.State))
+	}
+	if len(x.CustomVal) > 0 {
+		// 1 = protowire.SizeTag(4)
+		size += 1 + protowire.SizeBytes(len(x.CustomVal))
+	}
+	if x.ModifyStamp != 0 {
+		// 1 = protowire.SizeTag(5)
+		size += 1 + protowire.SizeVarint(uint64(x.ModifyStamp))
+	}
+	if x.CreateStamp != 0 {
+		// 1 = protowire.SizeTag(6)
+		size += 1 + protowire.SizeVarint(uint64(x.CreateStamp))
+	}
+	return
+}
+
+// MarshalObjectTo marshal data to []byte
+func (x *UserTest2Ex) MarshalObjectTo(buf []byte) (data []byte, err error) {
+	data = buf
+	if x.Uid != 0 {
+		// data = protowire.AppendTag(data, 1, protowire.VarintType) => 00001000
+		data = append(data, 0x8)
+		data = protowire.AppendVarint(data, uint64(x.Uid))
+	}
+	if x.Xxx != 0 {
+		// data = protowire.AppendTag(data, 2, protowire.VarintType) => 00010000
+		data = append(data, 0x10)
+		data = protowire.AppendVarint(data, uint64(x.Xxx))
+	}
+	if x.State != 0 {
+		// data = protowire.AppendTag(data, 3, protowire.VarintType) => 00011000
+		data = append(data, 0x18)
+		data = protowire.AppendVarint(data, uint64(x.State))
+	}
+	if len(x.CustomVal) > 0 {
+		// data = protowire.AppendTag(data, 4, protowire.BytesType) => 00100010
+		data = append(data, 0x22)
+		data = protowire.AppendString(data, x.CustomVal)
+	}
+	if x.ModifyStamp != 0 {
+		// data = protowire.AppendTag(data, 5, protowire.VarintType) => 00101000
+		data = append(data, 0x28)
+		data = protowire.AppendVarint(data, uint64(x.ModifyStamp))
+	}
+	if x.CreateStamp != 0 {
+		// data = protowire.AppendTag(data, 6, protowire.VarintType) => 00110000
+		data = append(data, 0x30)
+		data = protowire.AppendVarint(data, uint64(x.CreateStamp))
+	}
+	return
+}
+
+// UnmarshalObject unmarshal data from []byte
+func (x *UserTest2Ex) UnmarshalObject(data []byte) (err error) {
+	index := 0
+	for index < len(data) {
+		num, typ, cnt := protowire.ConsumeTag(data[index:])
+		if num == 0 {
+			err = errors.New("invalid tag")
+			return
+		}
+
+		index += cnt
+		switch num {
+		case 1:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2Ex.Uid ID:1 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Uid = int64(v)
+		case 2:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2Ex.Xxx ID:2 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Xxx = int64(v)
+		case 3:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2Ex.State ID:3 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.State = int8(v)
+		case 4:
+			v, cnt := protowire.ConsumeString(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2Ex.CustomVal ID:4 : invalid len value")
+				return
+			}
+			index += cnt
+			x.CustomVal = v
+		case 5:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2Ex.ModifyStamp ID:5 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.ModifyStamp = int64(v)
+		case 6:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserTest2Ex.CreateStamp ID:6 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.CreateStamp = int64(v)
+		default: // skip fields
+			cnt = protowire.ConsumeFieldValue(num, typ, data[index:])
+			if cnt < 0 {
+				return protowire.ParseError(cnt)
+			}
+			index += cnt
+		}
+	}
+
+	return
+}
+
+func (x *UserTest2Ex) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddInt64("uid", x.Uid)
+	enc.AddInt64("xxx", x.Xxx)
+	enc.AddInt8("state", x.State)
+	enc.AddString("custom_val", x.CustomVal)
+	enc.AddInt64("modify_stamp", x.ModifyStamp)
+	enc.AddInt64("create_stamp", x.CreateStamp)
+	return nil
+}
+
+type ZapArrayUserTest2Ex []*UserTest2Ex
+
+func (x ZapArrayUserTest2Ex) MarshalLogArray(ae zapcore.ArrayEncoder) error {
+	for _, v := range x {
+		ae.AppendObject(v)
+	}
+	return nil
+}
+
+func LogArrayUserTest2Ex(name string, v []*UserTest2Ex) zap.Field {
+	return zap.Array(name, ZapArrayUserTest2Ex(v))
+}
+
+type UserXxLog struct {
+	Id          int64  `json:"id,omitempty" db:"id"`
+	Uid         int64  `json:"uid,omitempty" db:"uid"`
+	Xx          int64  `json:"xx,omitempty" db:"xx"`
+	X2          string `json:"x2,omitempty" db:"x2"`
+	CreateStamp int64  `json:"create_stamp,omitempty" db:"create_stamp"`
+}
+
+func (x *UserXxLog) Reset() {
+	*x = UserXxLog{}
+}
+
+// MarshalObject marshal data to []byte
+func (x *UserXxLog) MarshalObject() (data []byte, err error) {
+	data = make([]byte, 0, x.MarshalSize())
+	return x.MarshalObjectTo(data)
+}
+
+// MarshalSize calc marshal data need space
+func (x *UserXxLog) MarshalSize() (size int) {
+	if x.Id != 0 {
+		// 1 = protowire.SizeTag(1)
+		size += 1 + protowire.SizeVarint(uint64(x.Id))
+	}
+	if x.Uid != 0 {
+		// 1 = protowire.SizeTag(2)
+		size += 1 + protowire.SizeVarint(uint64(x.Uid))
+	}
+	if x.Xx != 0 {
+		// 1 = protowire.SizeTag(3)
+		size += 1 + protowire.SizeVarint(uint64(x.Xx))
+	}
+	if len(x.X2) > 0 {
+		// 1 = protowire.SizeTag(4)
+		size += 1 + protowire.SizeBytes(len(x.X2))
+	}
+	if x.CreateStamp != 0 {
+		// 1 = protowire.SizeTag(5)
+		size += 1 + protowire.SizeVarint(uint64(x.CreateStamp))
+	}
+	return
+}
+
+// MarshalObjectTo marshal data to []byte
+func (x *UserXxLog) MarshalObjectTo(buf []byte) (data []byte, err error) {
+	data = buf
+	if x.Id != 0 {
+		// data = protowire.AppendTag(data, 1, protowire.VarintType) => 00001000
+		data = append(data, 0x8)
+		data = protowire.AppendVarint(data, uint64(x.Id))
+	}
+	if x.Uid != 0 {
+		// data = protowire.AppendTag(data, 2, protowire.VarintType) => 00010000
+		data = append(data, 0x10)
+		data = protowire.AppendVarint(data, uint64(x.Uid))
+	}
+	if x.Xx != 0 {
+		// data = protowire.AppendTag(data, 3, protowire.VarintType) => 00011000
+		data = append(data, 0x18)
+		data = protowire.AppendVarint(data, uint64(x.Xx))
+	}
+	if len(x.X2) > 0 {
+		// data = protowire.AppendTag(data, 4, protowire.BytesType) => 00100010
+		data = append(data, 0x22)
+		data = protowire.AppendString(data, x.X2)
+	}
+	if x.CreateStamp != 0 {
+		// data = protowire.AppendTag(data, 5, protowire.VarintType) => 00101000
+		data = append(data, 0x28)
+		data = protowire.AppendVarint(data, uint64(x.CreateStamp))
+	}
+	return
+}
+
+// UnmarshalObject unmarshal data from []byte
+func (x *UserXxLog) UnmarshalObject(data []byte) (err error) {
+	index := 0
+	for index < len(data) {
+		num, typ, cnt := protowire.ConsumeTag(data[index:])
+		if num == 0 {
+			err = errors.New("invalid tag")
+			return
+		}
+
+		index += cnt
+		switch num {
+		case 1:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserXxLog.Id ID:1 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Id = int64(v)
+		case 2:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserXxLog.Uid ID:2 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Uid = int64(v)
+		case 3:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserXxLog.Xx ID:3 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.Xx = int64(v)
+		case 4:
+			v, cnt := protowire.ConsumeString(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserXxLog.X2 ID:4 : invalid len value")
+				return
+			}
+			index += cnt
+			x.X2 = v
+		case 5:
+			v, cnt := protowire.ConsumeVarint(data[index:])
+			if cnt < 1 {
+				err = errors.New("parse UserXxLog.CreateStamp ID:5 : invalid varint value")
+				return
+			}
+			index += cnt
+			x.CreateStamp = int64(v)
+		default: // skip fields
+			cnt = protowire.ConsumeFieldValue(num, typ, data[index:])
+			if cnt < 0 {
+				return protowire.ParseError(cnt)
+			}
+			index += cnt
+		}
+	}
+
+	return
+}
+
+func (x *UserXxLog) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddInt64("id", x.Id)
+	enc.AddInt64("uid", x.Uid)
+	enc.AddInt64("xx", x.Xx)
+	enc.AddString("x2", x.X2)
+	enc.AddInt64("create_stamp", x.CreateStamp)
+	return nil
+}
+
+type ZapArrayUserXxLog []*UserXxLog
+
+func (x ZapArrayUserXxLog) MarshalLogArray(ae zapcore.ArrayEncoder) error {
+	for _, v := range x {
+		ae.AppendObject(v)
+	}
+	return nil
+}
+
+func LogArrayUserXxLog(name string, v []*UserXxLog) zap.Field {
+	return zap.Array(name, ZapArrayUserXxLog(v))
+}
