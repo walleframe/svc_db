@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/walleframe/svc_db"
 	"github.com/walleframe/svc_db/example/dbop"
 	"github.com/walleframe/svc_db/example/dbop/db_user"
 	"github.com/walleframe/svc_db/mysqlcfg"
@@ -467,4 +468,79 @@ func TestUserTest(t *testing.T) {
 	checkError(user.AllData(ctx, nil))
 
 	checkRes(user.DeleteMany(ctx, nil))
+}
+
+func TestUserInfoSql(t *testing.T) {
+	cfg := mysqlcfg.NewConfig("mysql.local")
+	cfg.DB = "test"
+	// db连接
+	db, err := mysqlcfg.NewMysqlClient(cfg)
+	if err != nil {
+		t.Fatalf("create mysql client err: %s", err)
+	}
+
+	// sync table columns
+	err = svc_db.SyncTableColumns(context.Background(), db, "user_info", db_user.UserInfoSQL_Create, db_user.UserInfoSQL_TableColumns)
+	assert.NoErrorf(t, err, "swap db_user.user_info pointer, sync columns failed")
+
+	// 插入
+	t.Run("test.insert", func(t *testing.T) {
+		insertSql := db_user.UserInfoNamedSQL(128).Insert().Uid().Email().Name().ToSQL()
+
+		datas := []dbop.UserInfo{
+			{
+				Uid:   1001,
+				Name:  "named1001",
+				Email: "1001@xx.mail",
+			},
+			{
+				Uid:   1002,
+				Name:  "named1002",
+				Email: "1002@xx.mail",
+			},
+			{
+				Uid:   1003,
+				Name:  "named1003",
+				Email: "1003@xx.mail",
+			},
+		}
+
+		for _, v := range datas {
+			_, err = db.NamedExec(insertSql, v)
+			assert.NoError(t, err, "test.insert err")
+		}
+
+	})
+
+	// 查询
+	t.Run("test.select", func(t *testing.T) {
+		selectSql := db_user.UserInfoNamedSQL(128).Select().Uid().Email().Name().ToSQL()
+
+		row, err := db.Query(selectSql)
+		assert.NoError(t, err, "test.select query err")
+
+		for row.Next() {
+			var userInfo dbop.UserInfo
+			assert.NoError(t, row.Scan(&userInfo.Uid, &userInfo.Email, &userInfo.Name), "test.select scan err")
+
+			t.Logf("test.select ret: %v", userInfo)
+		}
+	})
+
+	// 更新
+	t.Run("test.update", func(t *testing.T) {
+		updateSql := db_user.UserInfoNamedSQL(128).Update().Name().Where().Uid().ToSQL()
+
+		_, err = db.NamedExec(updateSql, dbop.UserInfo{Uid: 1003, Name: "named1003xx"})
+		assert.NoError(t, err, "test.update err")
+	})
+
+	// 删除
+	t.Run("test.delete", func(t *testing.T) {
+		deleteSql := db_user.UserInfoNamedSQL(128).Delete().Uid().ToSQL()
+
+		_, err = db.NamedExec(deleteSql, dbop.UserInfo{Uid: 1003})
+		assert.NoError(t, err, "test.delete err")
+	})
+
 }
