@@ -7,7 +7,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/json-iterator/go v1.1.12
 	github.com/stretchr/testify v1.8.4
-	github.com/walleframe/walle v0.0.0-20231226081234-30160e17dc9e
+	github.com/walleframe/walle v0.0.1
 	go.uber.org/multierr v1.10.0
 	go.uber.org/zap v1.26.0
 )
